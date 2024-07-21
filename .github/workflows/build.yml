@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '7.0.x'
+
+      - name: Initialize modding environment
+        uses: beat-forge/init-beatsaber@v1
+
+      - name: Download Mod Dependencies
+        uses: Goobwabber/download-beatmods-deps@1.2
+        with:
+          manifest: ${{ github.workspace }}/manifest.json
+
+      - name: Build project
+        id: build
+        run: |
+          dotnet build --configuration Release /p:LocalRefsDir=./Refs
+          latest_file=$(ls -t ${{ github.workspace }}/Source/bin/Release/net7.0/* | head -1)
+          echo "filename=$(basename $latest_file)" >> $GITHUB_ENV
+        env:
+          DOTNET_NOLOGO: true
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.filename }}
+          path: ${{ github.workspace }}/Source/bin/Release/net7.0/${{ env.filename }}
+          if-no-files-found: error
